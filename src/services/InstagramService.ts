@@ -30,26 +30,9 @@ export class InstagramService {
       
       const cleanUsername = username.replace('@', '');
       
-      // Try different configurations to get detailed data
+      // Enhanced configurations to get detailed profile data
       const configurations = [
-        {
-          search: cleanUsername,
-          searchType: "user",
-          searchLimit: 1,
-          resultsType: "details",
-          resultsLimit: 1,
-          addParentData: true,
-          enhanceUserSearchWithFacebookPage: true,
-          isUserReelFeedURL: false,
-          isUserTaggedFeedURL: false,
-          extendOutputFunction: "",
-          extendScraperFunction: "",
-          customMapFunction: "",
-          proxy: {
-            useApifyProxy: true,
-            apifyProxyGroups: ["RESIDENTIAL"]
-          }
-        },
+        // Configuration 1: Direct profile scraping with enhanced settings
         {
           search: `https://www.instagram.com/${cleanUsername}/`,
           searchType: "user",
@@ -57,10 +40,42 @@ export class InstagramService {
           resultsType: "details",
           resultsLimit: 1,
           addParentData: true,
-          enhanceUserSearchWithFacebookPage: false,
+          enhanceUserSearchWithFacebookPage: true,
+          includeHasStories: true,
+          includeHasHighlights: true,
+          includeRecentPosts: false,
           proxy: {
             useApifyProxy: true,
             apifyProxyGroups: ["RESIDENTIAL"]
+          }
+        },
+        // Configuration 2: Username search with detailed results
+        {
+          search: cleanUsername,
+          searchType: "user",
+          searchLimit: 1,
+          resultsType: "details",
+          resultsLimit: 1,
+          addParentData: true,
+          enhanceUserSearchWithFacebookPage: false,
+          includeHasStories: true,
+          includeHasHighlights: true,
+          proxy: {
+            useApifyProxy: true,
+            apifyProxyGroups: ["RESIDENTIAL"]
+          }
+        },
+        // Configuration 3: Basic profile data extraction
+        {
+          search: cleanUsername,
+          searchType: "user",
+          searchLimit: 1,
+          resultsType: "posts",
+          resultsLimit: 0,
+          addParentData: true,
+          proxy: {
+            useApifyProxy: true,
+            apifyProxyGroups: ["DATACENTER"]
           }
         }
       ];
@@ -87,18 +102,21 @@ export class InstagramService {
         // Parse the response and extract profile data
         const profileData = this.parseApifyResponse(responseJson, cleanUsername);
         
-        if (profileData && profileData.exists && (profileData.profilePicUrlHD || profileData.fullName !== cleanUsername)) {
-          console.log('✅ Found detailed profile data:', profileData);
+        if (profileData && profileData.exists && profileData.profilePicUrlHD) {
+          console.log('✅ Found detailed profile data with image:', profileData);
           return profileData;
+        } else if (profileData && profileData.exists) {
+          console.log('⚠️ Found profile data but no image, continuing to try other configurations');
+          // Continue to try other configurations for better data
         }
       }
 
-      // If no configuration worked, return basic profile
-      console.log('⚠️ No detailed data found, returning basic profile');
+      // If no configuration worked with detailed data, return basic profile
+      console.log('⚠️ No detailed profile data found, returning basic profile');
       return {
         username: cleanUsername,
         fullName: cleanUsername,
-        profilePicUrlHD: '',
+        profilePicUrlHD: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanUsername)}&size=400&background=fb923c&color=ffffff&bold=true`,
         exists: true
       };
       
@@ -159,7 +177,7 @@ export class InstagramService {
     }
 
     // Check for other possible nested structures
-    const possibleKeys = ['data', 'results', 'profiles', 'users'];
+    const possibleKeys = ['data', 'results', 'profiles', 'users', 'owner'];
     for (const key of possibleKeys) {
       if (responseJson[key]) {
         const nestedData = Array.isArray(responseJson[key]) ? responseJson[key][0] : responseJson[key];

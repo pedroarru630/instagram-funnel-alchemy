@@ -57,11 +57,12 @@ const ProfileConfirmation = () => {
 
   const displayName = profileData.fullName || profileData.username;
   const profileImage = profileData.profilePicUrlHD;
+  const hasValidImage = profileImage && profileImage.trim() !== '';
 
   console.log('=== PROFILE CONFIRMATION RENDER DATA ===');
   console.log('displayName:', displayName);
   console.log('profileImage:', profileImage);
-  console.log('profileImage type:', typeof profileImage);
+  console.log('hasValidImage:', hasValidImage);
 
   return (
     <div className="min-h-screen bg-gray-200 flex flex-col">
@@ -76,7 +77,7 @@ const ProfileConfirmation = () => {
           {/* Profile picture */}
           <div className="flex justify-center mb-6">
             <Avatar className="w-24 h-24">
-              {profileImage && (
+              {hasValidImage && (
                 <AvatarImage 
                   src={profileImage}
                   alt={displayName}

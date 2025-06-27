@@ -34,110 +34,62 @@ export class InstagramService {
       
       const cleanUsername = username.replace('@', '');
       
-      // More targeted configurations to get actual profile data
-      const configurations = [
-        // Configuration 1: Direct URL scraping for detailed profile data
-        {
-          search: `https://www.instagram.com/${cleanUsername}/`,
-          searchType: "user",
-          searchLimit: 3,
-          resultsType: "details",
-          resultsLimit: 3,
-          addParentData: true,
-          enhanceUserSearchWithFacebookPage: true,
-          includeHasStories: true,
-          includeHasHighlights: true,
-          includeRecentPosts: true,
-          extendOutputFunction: `async ({ data, item, page, request, customData }) => {
-            return {
-              ...data,
-              directProfileData: true
-            };
-          }`,
-          proxy: {
-            useApifyProxy: true,
-            apifyProxyGroups: ["RESIDENTIAL"]
-          }
-        },
-        // Configuration 2: Username search with enhanced data extraction
-        {
-          search: cleanUsername,
-          searchType: "user", 
-          searchLimit: 5,
-          resultsType: "details",
-          resultsLimit: 5,
-          addParentData: true,
-          enhanceUserSearchWithFacebookPage: false,
-          includeHasStories: true,
-          includeHasHighlights: true,
-          includeRecentPosts: true,
-          extendOutputFunction: `async ({ data, item, page, request, customData }) => {
-            // Try to extract profile data from various possible locations
-            const profileData = data || item || {};
-            return {
-              ...profileData,
-              searchBasedData: true
-            };
-          }`,
-          proxy: {
-            useApifyProxy: true,
-            apifyProxyGroups: ["RESIDENTIAL"]
-          }
-        },
-        // Configuration 3: Posts search to get profile owner data
-        {
-          search: cleanUsername,
-          searchType: "user",
-          searchLimit: 1,
-          resultsType: "posts",
-          resultsLimit: 1,
-          addParentData: true,
-          proxy: {
-            useApifyProxy: true,
-            apifyProxyGroups: ["DATACENTER"]
-          }
+      // Add a debug configuration to see what Apify actually returns
+      const debugConfiguration = {
+        search: cleanUsername,
+        searchType: "user",
+        searchLimit: 1,
+        resultsType: "details",
+        resultsLimit: 1,
+        addParentData: true,
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ["RESIDENTIAL"]
         }
-      ];
+      };
 
-      for (let i = 0; i < configurations.length; i++) {
-        console.log(`📡 Trying configuration ${i + 1}:`, configurations[i]);
-        
-        try {
-          const response = await fetch(this.APIFY_API_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(configurations[i])
-          });
+      console.log('🧪 DEBUGGING - Sending this configuration to Apify:', JSON.stringify(debugConfiguration, null, 2));
+      
+      const response = await fetch(this.APIFY_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(debugConfiguration)
+      });
 
-          if (!response.ok) {
-            console.log(`❌ Configuration ${i + 1} failed with status:`, response.status);
-            const errorText = await response.text();
-            console.log(`❌ Error response:`, errorText);
-            continue;
-          }
-
-          const responseJson = await response.json();
-          console.log(`🔍 Configuration ${i + 1} Full Response:`, JSON.stringify(responseJson, null, 2));
-
-          // Parse the response and extract profile data
-          const profileData = this.parseApifyResponse(responseJson, cleanUsername);
-          
-          if (profileData && profileData.exists && profileData.profilePicUrlHD && !profileData.profilePicUrlHD.includes('ui-avatars.com')) {
-            console.log('✅ Found detailed profile data with real image:', profileData);
-            return profileData;
-          } else if (profileData && profileData.exists) {
-            console.log('⚠️ Found profile data but no real image, continuing to try other configurations');
-          }
-        } catch (configError) {
-          console.log(`❌ Configuration ${i + 1} threw error:`, configError);
-          continue;
-        }
+      if (!response.ok) {
+        console.log('❌ Response not OK:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.log('❌ Error response body:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // If no configuration worked with detailed data, return basic profile
-      console.log('⚠️ No detailed profile data found, returning basic profile');
+      const responseJson = await response.json();
+      
+      // CRITICAL DEBUG: Log the EXACT raw response from Apify
+      console.log('🧪 RAW APIFY RESPONSE - TYPE:', typeof responseJson);
+      console.log('🧪 RAW APIFY RESPONSE - KEYS:', Object.keys(responseJson || {}));
+      console.log('🧪 RAW APIFY RESPONSE - FULL OBJECT:', JSON.stringify(responseJson, null, 2));
+      
+      // Check if it's an array
+      if (Array.isArray(responseJson)) {
+        console.log('🧪 RESPONSE IS ARRAY - LENGTH:', responseJson.length);
+        responseJson.forEach((item, index) => {
+          console.log(`🧪 ARRAY ITEM ${index}:`, JSON.stringify(item, null, 2));
+        });
+      }
+
+      // Parse the response and extract profile data
+      const profileData = this.parseApifyResponse(responseJson, cleanUsername);
+      
+      if (profileData && profileData.exists) {
+        console.log('✅ FINAL PARSED PROFILE DATA:', JSON.stringify(profileData, null, 2));
+        return profileData;
+      }
+
+      // If no profile data found, return basic profile with placeholder
+      console.log('⚠️ No profile data found, returning placeholder');
       return {
         username: cleanUsername,
         fullName: cleanUsername,
@@ -157,68 +109,65 @@ export class InstagramService {
   }
 
   private static parseApifyResponse(responseJson: any, username: string): InstagramProfile | null {
-    console.log('🔧 Parsing Apify response...');
-    console.log('🔧 Response type:', typeof responseJson);
-    console.log('🔧 Response keys:', Object.keys(responseJson || {}));
+    console.log('🔧 PARSING - Starting to parse response for username:', username);
     
     // Function to extract profile data from an object
-    const extractProfileData = (obj: any): Partial<InstagramProfile> | null => {
-      if (!obj) return null;
-      
-      console.log('🔍 Extracting from object:', obj);
-      
-      // Direct properties
-      if (obj.username || obj.profilePicUrlHD || obj.fullName) {
-        return {
-          username: obj.username,
-          fullName: obj.fullName,
-          profilePicUrlHD: obj.profilePicUrlHD || obj.profilePicUrl
-        };
+    const extractProfileData = (obj: any, path: string = 'root'): Partial<InstagramProfile> | null => {
+      if (!obj) {
+        console.log(`🔧 PARSING - Object at ${path} is null/undefined`);
+        return null;
       }
       
-      // Check owner property (common in Instagram API responses)
-      if (obj.owner) {
-        console.log('🔍 Found owner data:', obj.owner);
-        return {
-          username: obj.owner.username,
-          fullName: obj.owner.full_name || obj.owner.fullName,
-          profilePicUrlHD: obj.owner.profile_pic_url_hd || obj.owner.profilePicUrlHD || obj.owner.profile_pic_url
-        };
+      console.log(`🔧 PARSING - Checking object at ${path}:`, JSON.stringify(obj, null, 2));
+      
+      // Look for direct profile fields
+      const possibleFields = {
+        username: obj.username || obj.user_name || obj.handle,
+        fullName: obj.fullName || obj.full_name || obj.displayName || obj.display_name || obj.name,
+        profilePicUrlHD: obj.profilePicUrlHD || obj.profile_pic_url_hd || obj.profilePicUrl || obj.profile_pic_url || obj.avatar || obj.picture
+      };
+
+      console.log(`🔧 PARSING - Extracted fields from ${path}:`, possibleFields);
+
+      // If we found any profile data, return it
+      if (possibleFields.username || possibleFields.profilePicUrlHD) {
+        console.log(`✅ PARSING - Found profile data at ${path}`);
+        return possibleFields;
       }
       
-      // Check graphql structure (another common Instagram structure)
-      if (obj.graphql && obj.graphql.user) {
-        console.log('🔍 Found graphql user data:', obj.graphql.user);
-        const user = obj.graphql.user;
-        return {
-          username: user.username,
-          fullName: user.full_name || user.fullName,
-          profilePicUrlHD: user.profile_pic_url_hd || user.profilePicUrlHD || user.profile_pic_url
-        };
+      // Check nested structures
+      const nestedPaths = [
+        { key: 'owner', path: `${path}.owner` },
+        { key: 'user', path: `${path}.user` },
+        { key: 'graphql.user', path: `${path}.graphql.user` },
+        { key: 'data', path: `${path}.data` },
+        { key: 'profile', path: `${path}.profile` },
+        { key: 'userInfo', path: `${path}.userInfo` }
+      ];
+
+      for (const nested of nestedPaths) {
+        const nestedObj = nested.key.includes('.') ? 
+          nested.key.split('.').reduce((o, k) => o?.[k], obj) : 
+          obj[nested.key];
+          
+        if (nestedObj) {
+          console.log(`🔍 PARSING - Found nested object at ${nested.path}`);
+          const result = extractProfileData(nestedObj, nested.path);
+          if (result) return result;
+        }
       }
       
-      // Check user property
-      if (obj.user) {
-        console.log('🔍 Found user data:', obj.user);
-        return {
-          username: obj.user.username,
-          fullName: obj.user.full_name || obj.user.fullName,
-          profilePicUrlHD: obj.user.profile_pic_url_hd || obj.user.profilePicUrlHD || obj.user.profile_pic_url
-        };
-      }
-      
+      console.log(`❌ PARSING - No profile data found in ${path}`);
       return null;
     };
 
     // Handle array response
-    if (Array.isArray(responseJson) && responseJson.length > 0) {
-      console.log('📋 Processing array response with', responseJson.length, 'items');
+    if (Array.isArray(responseJson)) {
+      console.log('🔧 PARSING - Processing array response');
       
       for (let i = 0; i < responseJson.length; i++) {
         const item = responseJson[i];
-        console.log(`📋 Processing item ${i}:`, item);
-        
-        const extracted = extractProfileData(item);
+        const extracted = extractProfileData(item, `array[${i}]`);
         if (extracted && (extracted.username || extracted.profilePicUrlHD)) {
           return {
             username: extracted.username || username,
@@ -228,45 +177,23 @@ export class InstagramService {
           };
         }
       }
-    }
-
-    // Handle direct object response
-    const extracted = extractProfileData(responseJson);
-    if (extracted && (extracted.username || extracted.profilePicUrlHD)) {
-      console.log('📋 Direct object extraction successful:', extracted);
-      return {
-        username: extracted.username || username,
-        fullName: extracted.fullName || extracted.username || username,
-        profilePicUrlHD: extracted.profilePicUrlHD || '',
-        exists: true
-      };
-    }
-
-    // Handle nested structures - check common nested keys
-    const possibleKeys = ['data', 'results', 'profiles', 'users', 'items', 'posts'];
-    for (const key of possibleKeys) {
-      if (responseJson[key]) {
-        console.log(`🔍 Checking nested key: ${key}`);
-        const nestedData = Array.isArray(responseJson[key]) ? responseJson[key] : [responseJson[key]];
-        
-        for (const item of nestedData) {
-          const extracted = extractProfileData(item);
-          if (extracted && (extracted.username || extracted.profilePicUrlHD)) {
-            console.log(`📋 Found data in ${key}:`, extracted);
-            return {
-              username: extracted.username || username,
-              fullName: extracted.fullName || extracted.username || username,
-              profilePicUrlHD: extracted.profilePicUrlHD || '',
-              exists: true
-            };
-          }
-        }
+    } else {
+      // Handle direct object response
+      const extracted = extractProfileData(responseJson, 'direct');
+      if (extracted && (extracted.username || extracted.profilePicUrlHD)) {
+        return {
+          username: extracted.username || username,
+          fullName: extracted.fullName || extracted.username || username,
+          profilePicUrlHD: extracted.profilePicUrlHD || '',
+          exists: true
+        };
       }
     }
 
     // If we have urlsFromSearch, profile exists but no detailed data
     if (responseJson.urlsFromSearch && responseJson.urlsFromSearch.length > 0) {
-      console.log('🔗 Found urlsFromSearch but no detailed data');
+      console.log('🔗 PARSING - Found urlsFromSearch but no detailed profile data');
+      console.log('🔗 PARSING - URLs found:', responseJson.urlsFromSearch);
       return {
         username: username,
         fullName: username,
@@ -275,7 +202,7 @@ export class InstagramService {
       };
     }
 
-    console.log('❌ No profile data found in response');
+    console.log('❌ PARSING - No profile data found anywhere in response');
     return null;
   }
 }

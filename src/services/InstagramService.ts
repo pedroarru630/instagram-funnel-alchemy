@@ -33,7 +33,7 @@ export class InstagramService {
       
       const cleanUsername = username.replace('@', '');
       
-      // Add a debug configuration to see what Apify actually returns
+      // Updated configuration with RESIDENTIAL proxy group
       const debugConfiguration = {
         search: cleanUsername,
         searchType: "user",

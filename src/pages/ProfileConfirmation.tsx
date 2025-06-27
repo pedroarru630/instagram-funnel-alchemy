@@ -22,14 +22,20 @@ const ProfileConfirmation = () => {
     console.log('Raw stored profile from sessionStorage:', storedProfile);
     
     if (storedProfile) {
-      const parsed = JSON.parse(storedProfile);
-      console.log('Parsed profile data:', JSON.stringify(parsed, null, 2));
-      console.log('parsed.profilePicUrlHD:', parsed.profilePicUrlHD);
-      console.log('parsed.profilePicUrlHD type:', typeof parsed.profilePicUrlHD);
-      console.log('parsed.username:', parsed.username);
-      console.log('parsed.fullName:', parsed.fullName);
-      console.log('parsed.exists:', parsed.exists);
-      setProfileData(parsed);
+      // 🔵 Debug Log #4: Retrieved from sessionStorage before parsing
+      const stored = JSON.parse(storedProfile);
+      console.log("🔵 Retrieved from sessionStorage:", stored);
+      console.log("🔵 Retrieved from sessionStorage (stringified):", JSON.stringify(stored, null, 2));
+      console.log("🔵 stored.profilePicUrlHD:", stored.profilePicUrlHD);
+      console.log("🔵 stored.profilePicUrlHD type:", typeof stored.profilePicUrlHD);
+      
+      console.log('Parsed profile data:', JSON.stringify(stored, null, 2));
+      console.log('parsed.profilePicUrlHD:', stored.profilePicUrlHD);
+      console.log('parsed.profilePicUrlHD type:', typeof stored.profilePicUrlHD);
+      console.log('parsed.username:', stored.username);
+      console.log('parsed.fullName:', stored.fullName);
+      console.log('parsed.exists:', stored.exists);
+      setProfileData(stored);
     } else {
       console.log('No profile data found in sessionStorage, redirecting to input');
       navigate('/perfil-outras-pessoas');
@@ -63,6 +69,11 @@ const ProfileConfirmation = () => {
   console.log('displayName:', displayName);
   console.log('profileImage:', profileImage);
   console.log('hasValidImage:', hasValidImage);
+  
+  // 🔵 Additional debug for image binding
+  console.log("🔵 About to bind image src:", profileImage);
+  console.log("🔵 Image src type:", typeof profileImage);
+  console.log("🔵 Image src length:", profileImage ? profileImage.length : 'N/A');
 
   return (
     <div className="min-h-screen bg-gray-200 flex flex-col">
@@ -81,10 +92,14 @@ const ProfileConfirmation = () => {
                 <AvatarImage 
                   src={profileImage}
                   alt={displayName}
-                  onLoad={() => console.log('ProfileConfirmation - Profile image loaded successfully:', profileImage)}
+                  onLoad={() => {
+                    console.log('🟢 ProfileConfirmation - Profile image loaded successfully:', profileImage);
+                    console.log('🟢 Image loaded with src:', profileImage);
+                  }}
                   onError={(e) => {
-                    console.log('ProfileConfirmation - Profile image failed to load:', profileImage);
-                    console.log('ProfileConfirmation - Error details:', e);
+                    console.log('🔴 ProfileConfirmation - Profile image failed to load:', profileImage);
+                    console.log('🔴 Error details:', e);
+                    console.log('🔴 Failed image src:', profileImage);
                   }}
                 />
               )}
@@ -92,6 +107,17 @@ const ProfileConfirmation = () => {
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
+          </div>
+
+          {/* Debug image element for direct testing */}
+          <div className="flex justify-center mb-4">
+            <img 
+              src={profileImage} 
+              alt="Instagram Profile Picture Debug" 
+              style={{width: '50px', height: '50px', border: '2px solid red'}}
+              onLoad={() => console.log('🟢 Direct img element loaded:', profileImage)}
+              onError={() => console.log('🔴 Direct img element failed:', profileImage)}
+            />
           </div>
 
           {/* Name */}

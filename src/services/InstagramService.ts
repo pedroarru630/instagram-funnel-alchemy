@@ -1,4 +1,3 @@
-
 interface InstagramProfile {
   username: string;
   fullName?: string;
@@ -67,21 +66,16 @@ export class InstagramService {
 
       const responseJson = await response.json();
       
-      // CRITICAL DEBUG: Log the EXACT raw response from Apify
-      console.log('🧪 RAW APIFY RESPONSE - TYPE:', typeof responseJson);
-      console.log('🧪 RAW APIFY RESPONSE - KEYS:', Object.keys(responseJson || {}));
-      console.log('🧪 RAW APIFY RESPONSE - FULL OBJECT:', JSON.stringify(responseJson, null, 2));
+      // 🔴 Debug Log #1: After fetching and before parsing
+      console.log("🔴 Raw Apify JSON:", responseJson);
+      console.log("🔴 Raw Apify JSON (stringified):", JSON.stringify(responseJson, null, 2));
       
-      // Check if it's an array
-      if (Array.isArray(responseJson)) {
-        console.log('🧪 RESPONSE IS ARRAY - LENGTH:', responseJson.length);
-        responseJson.forEach((item, index) => {
-          console.log(`🧪 ARRAY ITEM ${index}:`, JSON.stringify(item, null, 2));
-        });
-      }
-
       // Parse the response and extract profile data
       const profileData = this.parseApifyResponse(responseJson, cleanUsername);
+      
+      // 🟢 Debug Log #2: Immediately after parsing
+      console.log("🟢 Parsed Profile Data:", profileData);
+      console.log("🟢 Parsed Profile Data (stringified):", JSON.stringify(profileData, null, 2));
       
       if (profileData && profileData.exists) {
         console.log('✅ FINAL PARSED PROFILE DATA:', JSON.stringify(profileData, null, 2));
@@ -90,12 +84,18 @@ export class InstagramService {
 
       // If no profile data found, return basic profile with placeholder
       console.log('⚠️ No profile data found, returning placeholder');
-      return {
+      const placeholderProfile = {
         username: cleanUsername,
         fullName: cleanUsername,
         profilePicUrlHD: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanUsername)}&size=400&background=fb923c&color=ffffff&bold=true`,
         exists: true
       };
+      
+      // 🟢 Debug Log #2a: Placeholder profile data
+      console.log("🟢 Placeholder Profile Data:", placeholderProfile);
+      console.log("🟢 Placeholder Profile Data (stringified):", JSON.stringify(placeholderProfile, null, 2));
+      
+      return placeholderProfile;
       
     } catch (error) {
       console.error('💥 Error fetching Instagram profile:', error);

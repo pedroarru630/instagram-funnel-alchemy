@@ -34,7 +34,10 @@ const Loading = () => {
         
         if (profileData.exists) {
           console.log('Profile exists, storing in sessionStorage');
+          
+          // 🟡 Debug Log #3: Right after storing in sessionStorage
           sessionStorage.setItem('other_instagram_profile', JSON.stringify(profileData));
+          console.log("🟡 Stored in sessionStorage:", sessionStorage.getItem('other_instagram_profile'));
           
           // Verify what was stored
           const stored = sessionStorage.getItem('other_instagram_profile');
